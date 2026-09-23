@@ -23,39 +23,92 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Learning Laravel
+# Laravel Request System
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Brief Description
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The Laravel Request System is a web application for managing and organizing user requests. It provides a Laravel-based foundation for submitting, tracking, and maintaining request records through a centralized system.
 
-## Laravel Sponsors
+## Student Information
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```text
+Student: Iris Claire Deverla Solano
+Course: BSIT
+Year: 4th Year
+Section: [Your Section]
+```
 
-### Premium Partners
+## Software Requirements
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- PHP
+- Composer
+- Laravel
+- MySQL
+- phpMyAdmin
+- Git
+- GitHub
+- Web Browser
 
-## Contributing
+## Laravel Installation
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Clone the repository and install its dependencies:
 
-## Code of Conduct
+```powershell
+git clone https://github.com/irisclairesolano/laravel_request_system.git
+cd laravel-request-system
+composer install
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Create the environment file:
 
-## Security Vulnerabilities
+```powershell
+cp .env.example .env
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+For Windows PowerShell, you can also use:
 
-## License
+```powershell
+Copy-Item .env.example .env
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Generate the application key:
+
+```powershell
+php artisan key:generate
+```
+
+Configure the database connection in `.env`, including the database name, host, username, and password. Do not commit database passwords or other credentials to the repository.
+
+Run the database migrations:
+
+```powershell
+php artisan migrate
+```
+
+## Database Name
+
+```text
+laravel_request_system_db
+```
+
+## Database Import Instructions
+
+This project uses Laravel migrations, so the database structure can be recreated without importing a SQL file. After creating the database named `laravel_request_system_db` and configuring `.env`, run:
+
+```powershell
+php artisan migrate
+```
+
+Do not put your database password in this README.
+
+## Run the Project
+
+Start the Laravel development server:
+
+```powershell
+php artisan serve
+```
+
+Open the project in a web browser at:
+
+http://127.0.0.1:8000
