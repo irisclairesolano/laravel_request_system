@@ -101,6 +101,39 @@ php artisan migrate
 
 Do not put your database password in this README.
 
+## Request Data Model
+
+The project includes a `requests` table for storing submitted requests.
+
+### Migration
+
+```powershell
+php artisan make:migration create_requests_table
+php artisan migrate
+```
+
+### Verification
+
+```powershell
+php artisan migrate:status
+```
+
+The `requests` table can also be inspected through phpMyAdmin.
+
+### Request Fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| id | bigint unsigned | Unique record identifier |
+| requester_name | varchar(100) | Full name of the person submitting the request |
+| requester_email | varchar(255) | Email address of the requester |
+| item_name | varchar(150) | Name of the requested item |
+| quantity | unsigned integer | Quantity requested |
+| purpose | text | Reason or purpose for the request |
+| status | varchar(20) | Request status, default `pending` |
+| created_at | timestamp | Date and time the request was created |
+| updated_at | timestamp | Date and time the request was last updated |
+
 ## Run the Project
 
 Start the Laravel development server:
