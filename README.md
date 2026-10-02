@@ -8,10 +8,13 @@ The Laravel Request System is a web application for managing and organizing user
 ## Student Information
 
 ```text
-Student: Iris Claire Deverla Solano
+Students:
+- Iris Claire Deverla Solano
+- Kyla Chua
+
 Course: BSIT
 Year: 4th Year
-Section: [Your Section]
+Section: 4-3
 ```
 
 ## Software Requirements
@@ -75,7 +78,16 @@ This project uses Laravel migrations, so the database structure can be recreated
 php artisan migrate
 ```
 
-Do not put your database password in this README.
+## Team Setup
+
+Team members can set up the project by following the Laravel Installation and Database Import Instructions above.
+
+Make sure to:
+- Use the database name `laravel_request_system_db`.
+- Configure the local `.env` file with the correct MySQL settings.
+- Run the required Laravel migrations.
+- Do not commit the actual `.env` file because it may contain sensitive or local configuration.
+
 
 ## Request Data Model
 
@@ -109,6 +121,47 @@ The `requests` table can also be inspected through phpMyAdmin.
 | status | varchar(20) | Request status, default `pending` |
 | created_at | timestamp | Date and time the request was created |
 | updated_at | timestamp | Date and time the request was last updated |
+
+
+## User Stories
+
+### Requester
+
+As a requester, I want to submit a request with my information, requested item, quantity, and purpose, so that my request can be properly recorded and reviewed.
+
+**Acceptance Criteria:**
+- The requester must provide a name, email, item name, quantity, and purpose.
+- The quantity must be greater than zero.
+- A new request must have a default status of `pending`.
+
+### Staff Reviewer
+
+As a staff reviewer, I want to view the submitted request details and current status, so that I can properly review and process the request.
+
+**Acceptance Criteria:**
+- The staff reviewer can view the requester name, email, item, quantity, purpose, and status.
+- Each request must have a unique ID.
+- The request status must be available for checking.
+
+### Record Keeper
+
+As a record keeper, I want each request to have creation and update timestamps, so that I can track when a request was created or changed.
+
+**Acceptance Criteria:**
+- Each request must contain `created_at` and `updated_at`.
+- Each request must be stored in the `requests` table.
+- Each request must have a unique ID for identification.
+
+## Verify the Requests Table
+
+To verify that the `requests` table was created correctly:
+
+1. Make sure the Laravel project is connected to MySQL.
+2. Run:
+
+```powershell
+php artisan migrate
+
 
 ## Run the Project
 
