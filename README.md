@@ -67,12 +67,12 @@ php artisan migrate
 ## Database Name
 
 ```text
-laravel_request_system_db
+ laravel-request-system
 ```
 
 ## Database Import Instructions
 
-This project uses Laravel migrations, so the database structure can be recreated without importing a SQL file. After creating the database named `laravel_request_system_db` and configuring `.env`, run:
+This project uses Laravel migrations, so the database structure can be recreated without importing a SQL file. After creating the database named ` laravel-request-system` and configuring `.env`, run:
 
 ```powershell
 php artisan migrate
@@ -83,7 +83,7 @@ php artisan migrate
 Team members can set up the project by following the Laravel Installation and Database Import Instructions above.
 
 Make sure to:
-- Use the database name `laravel_request_system_db`.
+- Use the database name ` laravel-request-system`.
 - Configure the local `.env` file with the correct MySQL settings.
 - Run the required Laravel migrations.
 - Do not commit the actual `.env` file because it may contain sensitive or local configuration.
