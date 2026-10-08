@@ -76,6 +76,39 @@ class ServiceRequestAuthorizationTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_request_details_escape_user_provided_text_in_blade_output(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $serviceRequest = ServiceRequest::query()->create([
+            ...$this->requestData($student),
+            'purpose' => '<script>alert("x")</script>',
+        ]);
+
+        $this->actingAs($student)
+            ->get("/requests/{$serviceRequest->id}")
+            ->assertOk()
+            ->assertSee('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;', false)
+            ->assertDontSee('<script>alert("x")</script>', false);
+    }
+
+    public function test_request_forms_include_csrf_and_status_form_uses_patch_method_spoofing(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $serviceRequest = ServiceRequest::query()->create($this->requestData($student));
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($student)
+            ->get('/requests')
+            ->assertOk()
+            ->assertSee('name="_token"', false);
+
+        $this->actingAs($admin)
+            ->get("/requests/{$serviceRequest->id}")
+            ->assertOk()
+            ->assertSee('name="_token"', false)
+            ->assertSee('name="_method" value="PATCH"', false);
+    }
+
     public function test_student_creation_uses_their_account_details_and_pending_status(): void
     {
         $student = User::factory()->create(['role' => 'student']);
