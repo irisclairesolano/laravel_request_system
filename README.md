@@ -170,3 +170,8 @@ php artisan serve
 Open the project in a web browser at:
 
 http://127.0.0.1:8000
+
+##laboratory 3 verification 
+
+Verification instruction: follow the required access checks
+
