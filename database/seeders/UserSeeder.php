@@ -2,38 +2,52 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\ServiceRequest;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class UserSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     *
+     * Trusted setup: creates fictional students + one administrator.
+     * Admin role is assigned here only (not via public registration).
      */
     public function run(): void
     {
-        $student1 = User::create([
-            'name' => 'Student 1',
-            'email' => 'iriscaliresom@gmail.com',
-            'password' => Hash::make('password'),
-            'role' => 'student',
-        ]);
+        User::where('email', 'test@example.com')->delete();
 
-        $student2 = User::create([
-            'name' => 'Student 2',
-            'email' => 'klylachua.com',
-            'password' => Hash::make('password'),
-            'role' => 'student',
-        ]);
+        $student1 = User::updateOrCreate(
+            ['email' => 'student1@example.com'],
+            [
+                'name' => 'Student 1',
+                'password' => 'password',
+                'role' => 'student',
+            ]
+        );
 
-        $admin = User::create([
-            'name' => 'Admin',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-        ]);
-        ServiceRequest::where('user_id', 1)->update(['user_id' => $student1->id]);
-        ServiceRequest::where('user_id', 2)->update(['user_id' => $student2->id]);
-        ServiceRequest::where('user_id', 3)->update(['user_id' => $admin->id]);
+        $student2 = User::updateOrCreate(
+            ['email' => 'student2@example.com'],
+            [
+                'name' => 'Student 2',
+                'password' => 'password',
+                'role' => 'student',
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Administrator',
+                'password' => 'password',
+                'role' => 'admin',
+            ]
+        );
+
+        // Preserve Laboratory 2 rows; only attach ownership via user_id.
+        ServiceRequest::where('id', 1)->update(['user_id' => $student1->id]);
+        ServiceRequest::where('id', 2)->update(['user_id' => $student2->id]);
+        ServiceRequest::where('id', 3)->update(['user_id' => $student1->id]);
     }
 }
