@@ -148,6 +148,19 @@ As a record keeper, I want each request to have creation and update timestamps, 
 - Each request must be stored in the `requests` table.
 - Each request must have a unique ID for identification.
 
+## Request Authorization
+
+Service request endpoints require authentication. Students can create requests and
+see only their own requests in the list; administrators can list all requests.
+Individual request access and status changes are authorized server-side through
+`ServiceRequestPolicy` before protected data is returned or the database is changed.
+
+Accessing another student's individual request returns **404 Not Found** to avoid
+disclosing whether that record exists. Other authorization denials return **403
+Forbidden**. The available JSON routes are `GET /requests`, `POST /requests`,
+`GET /requests/{serviceRequest}`, and
+`PATCH /requests/{serviceRequest}/status` (administrator only).
+
 ## Verify the Requests Table
 
 To verify that the `requests` table was created correctly:

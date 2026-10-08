@@ -19,9 +19,11 @@ class ServiceRequestPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, ServiceRequest $serviceRequest): bool
+    public function view(User $user, ServiceRequest $serviceRequest): Response|bool
     {
-        return $user->isAdmin() || $serviceRequest->user_id === $user->id;
+        return $user->isAdmin() || $serviceRequest->user_id === $user->id
+            ? true
+            : Response::denyAsNotFound();
     }
 
     /**
