@@ -250,5 +250,6 @@ http://127.0.0.1:8000
 
 ##laboratory 3 verification 
 
-Verification instruction: test administrator access and administrator-only status request 
+
+Verification instruction: Test administrator access and administrator-only status updates. 
 
