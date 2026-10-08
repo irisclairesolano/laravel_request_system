@@ -150,16 +150,48 @@ As a record keeper, I want each request to have creation and update timestamps, 
 
 ## Request Authorization
 
-Service request endpoints require authentication. Students can create requests and
-see only their own requests in the list; administrators can list all requests.
-Individual request access and status changes are authorized server-side through
-`ServiceRequestPolicy` before protected data is returned or the database is changed.
+All request routes require authentication. Students may create requests and list
+only requests whose `user_id` matches their signed-in account. Request ownership
+is determined by `user_id`, not by the requester name or email. Administrators
+may list and view all requests, and may update a request status. Students cannot
+set the owner, requester identity, role, or initial status: those values come
+from the authenticated account and the server.
 
-Accessing another student's individual request returns **404 Not Found** to avoid
-disclosing whether that record exists. Other authorization denials return **403
-Forbidden**. The available JSON routes are `GET /requests`, `POST /requests`,
-`GET /requests/{serviceRequest}`, and
-`PATCH /requests/{serviceRequest}/status` (administrator only).
+Every single-record read and status write is authorized on the server. A student
+who requests another student's record receives **404 Not Found**, consistently,
+so the response does not disclose whether that record exists. Other authorization
+denials (including a student's status update) return **403 Forbidden**.
+
+### Request Routes
+
+| Method | Path | Access and behavior |
+| --- | --- | --- |
+| `GET` | `/requests` | Authenticated list; students see their own requests, administrators see all. |
+| `POST` | `/requests` | Students create a request; server sets owner, requester identity, and `pending` status. |
+| `GET` | `/requests/{serviceRequest}` | Owner or administrator only; another student's record returns 404. |
+| `PATCH` | `/requests/{serviceRequest}/status` | Administrator only; accepts `pending`, `approved`, or `rejected`. |
+
+Browser requests render escaped Blade pages and use CSRF-protected forms.
+JSON clients can request JSON responses using the `Accept: application/json`
+header. The status form uses PATCH method spoofing and submits through the same
+authenticated, policy-protected route.
+
+### File Responsibilities
+
+| File | Responsibility |
+| --- | --- |
+| `app/Policies/ServiceRequestPolicy.php` | Defines list, view, create, and administrator status-update authorization. |
+| `app/Providers/AppServiceProvider.php` | Explicitly registers the service-request model policy. |
+| `app/Http/Controllers/ServiceRequestController.php` | Applies policy checks, validates allowlisted input, scopes lists by owner, and handles HTML/JSON responses. |
+| `routes/web.php` | Declares authenticated request and profile routes under Laravel's `web` middleware, including CSRF protection. |
+| `resources/views/requests/index.blade.php` | Displays the scoped list and student request form with `@csrf`. |
+| `resources/views/requests/show.blade.php` | Displays escaped request details and the administrator status form with `@csrf` and `@method('PATCH')`. |
+| `app/Models/ServiceRequest.php` | Maps the model to the `requests` table and explicitly allowlists assignable attributes. |
+| `database/migrations/2026_09_30_215253_create_requests_table.php` | Defines Laboratory 2 request field types and lengths. |
+| `database/migrations/2026_10_07_093407_add_user_id_to_requests_table.php` | Adds request ownership through `user_id`. |
+| `tests/Feature/ServiceRequestAuthorizationTest.php` | Tests request policy, ownership scoping, creation, and status updates. |
+| `tests/Feature/ServiceRequestAccessInputMatrixTest.php` | Exercises the T01–T10 access and input test cases. |
+| `docs/LAB3-ACCESS-INPUT-TEST-MATRIX.md` | Records expected and actual results, pass/fail status, evidence, and live CSRF check instructions. |
 
 ## Verify the Requests Table
 
@@ -171,6 +203,38 @@ To verify that the `requests` table was created correctly:
 ```powershell
 php artisan migrate
 ```
+
+## Laboratory 3 Setup and Testing
+
+Keep the Laboratory 1 database name, `laravel-request-system`, and configure
+its local connection in `.env`. For a new local setup, create the database in
+MySQL first, then run the migrations (and optional development seed data):
+
+```powershell
+Copy-Item .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+```
+
+Do not run `migrate:fresh` against a database containing work you need; it
+drops existing tables. Use the PHPUnit suite for automated checks:
+
+```powershell
+php artisan test
+php artisan test --filter=ServiceRequestAccessInputMatrixTest
+```
+
+The matrix report documents all ten cases and results:
+[`docs/LAB3-ACCESS-INPUT-TEST-MATRIX.md`](docs/LAB3-ACCESS-INPUT-TEST-MATRIX.md).
+Laravel normally bypasses CSRF middleware during PHPUnit runs; reproduce the
+missing/invalid token cases using the isolated SQLite database and live local
+HTTP-server steps in that report, not the regular project database.
+
+Before sharing or deploying, set `APP_DEBUG=false` in the deployed environment.
+The tracked `.env.example` contains placeholders only; `.env` and common local
+environment variants are excluded by `.gitignore`. Never include credentials,
+SQL errors, or debug stack traces in screenshots.
 
 ## Run the Project
 
