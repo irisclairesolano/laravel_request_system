@@ -1,0 +1,101 @@
+[1mdiff --git a/README.md b/README.md[m
+[1mindex f20a220..d7044af 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -150,16 +150,48 @@[m [m### Record Keeper[m
+ [m
+ ## Request Authorization[m
+ [m
+[31m-Service request endpoints require authentication. Students can create requests and[m
+[31m-see only their own requests in the list; administrators can list all requests.[m
+[31m-Individual request access and status changes are authorized server-side through[m
+[31m-`ServiceRequestPolicy` before protected data is returned or the database is changed.[m
+[32m+[m[32mAll request routes require authentication. Students may create requests and list[m
+[32m+[m[32monly requests whose `user_id` matches their signed-in account. Request ownership[m
+[32m+[m[32mis determined by `user_id`, not by the requester name or email. Administrators[m
+[32m+[m[32mmay list and view all requests, and may update a request status. Students cannot[m
+[32m+[m[32mset the owner, requester identity, role, or initial status: those values come[m
+[32m+[m[32mfrom the authenticated account and the server.[m
+ [m
+[31m-Accessing another student's individual request returns **404 Not Found** to avoid[m
+[31m-disclosing whether that record exists. Other authorization denials return **403[m
+[31m-Forbidden**. The available JSON routes are `GET /requests`, `POST /requests`,[m
+[31m-`GET /requests/{serviceRequest}`, and[m
+[31m-`PATCH /requests/{serviceRequest}/status` (administrator only).[m
+[32m+[m[32mEvery single-record read and status write is authorized on the server. A student[m
+[32m+[m[32mwho requests another student's record receives **404 Not Found**, consistently,[m
+[32m+[m[32mso the response does not disclose whether that record exists. Other authorization[m
+[32m+[m[32mdenials (including a student's status update) return **403 Forbidden**.[m
+[32m+[m
+[32m+[m[32m### Request Routes[m
+[32m+[m
+[32m+[m[32m| Method | Path | Access and behavior |[m
+[32m+[m[32m| --- | --- | --- |[m
+[32m+[m[32m| `GET` | `/requests` | Authenticated list; students see their own requests, administrators see all. |[m
+[32m+[m[32m| `POST` | `/requests` | Students create a request; server sets owner, requester identity, and `pending` status. |[m
+[32m+[m[32m| `GET` | `/requests/{serviceRequest}` | Owner or administrator only; another student's record returns 404. |[m
+[32m+[m[32m| `PATCH` | `/requests/{serviceRequest}/status` | Administrator only; accepts `pending`, `approved`, or `rejected`. |[m
+[32m+[m
+[32m+[m[32mBrowser requests render escaped Blade pages and use CSRF-protected forms.[m
+[32m+[m[32mJSON clients can request JSON responses using the `Accept: application/json`[m
+[32m+[m[32mheader. The status form uses PATCH method spoofing and submits through the same[m
+[32m+[m[32mauthenticated, policy-protected route.[m
+[32m+[m
+[32m+[m[32m### File Responsibilities[m
+[32m+[m
+[32m+[m[32m| File | Responsibility |[m
+[32m+[m[32m| --- | --- |[m
+[32m+[m[32m| `app/Policies/ServiceRequestPolicy.php` | Defines list, view, create, and administrator status-update authorization. |[m
+[32m+[m[32m| `app/Providers/AppServiceProvider.php` | Explicitly registers the service-request model policy. |[m
+[32m+[m[32m| `app/Http/Controllers/ServiceRequestController.php` | Applies policy checks, validates allowlisted input, scopes lists by owner, and handles HTML/JSON responses. |[m
+[32m+[m[32m| `routes/web.php` | Declares authenticated request and profile routes under Laravel's `web` middleware, including CSRF protection. |[m
+[32m+[m[32m| `resources/views/requests/index.blade.php` | Displays the scoped list and student request form with `@csrf`. |[m
+[32m+[m[32m| `resources/views/requests/show.blade.php` | Displays escaped request details and the administrator status form with `@csrf` and `@method('PATCH')`. |[m
+[32m+[m[32m| `app/Models/ServiceRequest.php` | Maps the model to the `requests` table and explicitly allowlists assignable attributes. |[m
+[32m+[m[32m| `database/migrations/2026_09_30_215253_create_requests_table.php` | Defines Laboratory 2 request field types and lengths. |[m
+[32m+[m[32m| `database/migrations/2026_10_07_093407_add_user_id_to_requests_table.php` | Adds request ownership through `user_id`. |[m
+[32m+[m[32m| `tests/Feature/ServiceRequestAuthorizationTest.php` | Tests request policy, ownership scoping, creation, and status updates. |[m
+[32m+[m[32m| `tests/Feature/ServiceRequestAccessInputMatrixTest.php` | Exercises the T01–T10 access and input test cases. |[m
+[32m+[m[32m| `docs/LAB3-ACCESS-INPUT-TEST-MATRIX.md` | Records expected and actual results, pass/fail status, evidence, and live CSRF check instructions. |[m
+ [m
+ ## Verify the Requests Table[m
+ [m
+[36m@@ -172,6 +204,38 @@[m [m## Verify the Requests Table[m
+ php artisan migrate[m
+ ```[m
+ [m
+[32m+[m[32m## Laboratory 3 Setup and Testing[m
+[32m+[m
+[32m+[m[32mKeep the Laboratory 1 database name, `laravel-request-system`, and configure[m
+[32m+[m[32mits local connection in `.env`. For a new local setup, create the database in[m
+[32m+[m[32mMySQL first, then run the migrations (and optional development seed data):[m
+[32m+[m
+[32m+[m[32m```powershell[m
+[32m+[m[32mCopy-Item .env.example .env[m
+[32m+[m[32mphp artisan key:generate[m
+[32m+[m[32mphp artisan migrate[m
+[32m+[m[32mphp artisan db:seed[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mDo not run `migrate:fresh` against a database containing work you need; it[m
+[32m+[m[32mdrops existing tables. Use the PHPUnit suite for automated checks:[m
+[32m+[m
+[32m+[m[32m```powershell[m
+[32m+[m[32mphp artisan test[m
+[32m+[m[32mphp artisan test --filter=ServiceRequestAccessInputMatrixTest[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mThe matrix report documents all ten cases and results:[m
+[32m+[m[32m[`docs/LAB3-ACCESS-INPUT-TEST-MATRIX.md`](docs/LAB3-ACCESS-INPUT-TEST-MATRIX.md).[m
+[32m+[m[32mLaravel normally bypasses CSRF middleware during PHPUnit runs; reproduce the[m
+[32m+[m[32mmissing/invalid token cases using the isolated SQLite database and live local[m
+[32m+[m[32mHTTP-server steps in that report, not the regular project database.[m
+[32m+[m
+[32m+[m[32mBefore sharing or deploying, set `APP_DEBUG=false` in the deployed environment.[m
+[32m+[m[32mThe tracked `.env.example` contains placeholders only; `.env` and common local[m
+[32m+[m[32menvironment variants are excluded by `.gitignore`. Never include credentials,[m
+[32m+[m[32mSQL errors, or debug stack traces in screenshots.[m
+[32m+[m
+ ## Run the Project[m
+ [m
+ Start the Laravel development server:[m
