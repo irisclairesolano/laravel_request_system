@@ -8,10 +8,9 @@ The Laravel Request System is a web application for managing and organizing user
 ## Student Information
 
 ```text
-Student: Iris Claire Deverla Solano
-Course: BSIT
-Year: 4th Year
-Section: [Your Section]
+
+CHUA, Kyla - Reviewer (inspects andn tests th code) 
+SOLANO, Iris claire D. - Driver (implements the change)
 ```
 
 ## Software Requirements
