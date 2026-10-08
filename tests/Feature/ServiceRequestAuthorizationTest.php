@@ -25,6 +25,46 @@ class ServiceRequestAuthorizationTest extends TestCase
             ->assertJsonPath('data.0.id', $ownRequest->id);
     }
 
+    public function test_student_request_pagination_remains_scoped_to_their_user_id(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $otherStudent = User::factory()->create(['role' => 'student']);
+
+        foreach (range(1, 17) as $index) {
+            ServiceRequest::query()->create($this->requestData($student));
+        }
+
+        foreach (range(1, 2) as $index) {
+            ServiceRequest::query()->create($this->requestData($otherStudent));
+        }
+
+        $response = $this->actingAs($student)
+            ->getJson('/requests?page=2')
+            ->assertOk()
+            ->assertJsonPath('total', 17)
+            ->assertJsonCount(2, 'data');
+
+        foreach ($response->json('data') as $request) {
+            $this->assertSame($student->id, $request['user_id']);
+        }
+    }
+
+    public function test_administrator_can_list_all_student_requests(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+        $otherStudent = User::factory()->create(['role' => 'student']);
+
+        ServiceRequest::query()->create($this->requestData($student));
+        ServiceRequest::query()->create($this->requestData($otherStudent));
+
+        $this->actingAs($admin)
+            ->getJson('/requests')
+            ->assertOk()
+            ->assertJsonPath('total', 2)
+            ->assertJsonCount(2, 'data');
+    }
+
     public function test_student_cannot_view_another_students_request(): void
     {
         $student = User::factory()->create(['role' => 'student']);
@@ -36,29 +76,54 @@ class ServiceRequestAuthorizationTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_student_can_create_a_request_but_cannot_choose_its_owner_or_initial_status(): void
+    public function test_student_creation_uses_their_account_details_and_pending_status(): void
     {
         $student = User::factory()->create(['role' => 'student']);
-        $otherStudent = User::factory()->create(['role' => 'student']);
 
         $this->actingAs($student)
             ->postJson('/requests', [
-                'requester_name' => 'Student',
-                'requester_email' => 'student@example.com',
+                'requester_name' => 'Forged Name',
+                'requester_email' => 'forged@example.com',
                 'item_name' => 'Laptop',
                 'quantity' => 1,
                 'purpose' => 'Coursework',
-                'user_id' => $otherStudent->id,
-                'status' => 'approved',
             ])
             ->assertCreated()
             ->assertJsonPath('user_id', $student->id)
+            ->assertJsonPath('requester_name', $student->name)
+            ->assertJsonPath('requester_email', $student->email)
             ->assertJsonPath('status', 'pending');
 
         $this->assertDatabaseHas('requests', [
             'user_id' => $student->id,
+            'requester_name' => $student->name,
+            'requester_email' => $student->email,
             'status' => 'pending',
         ]);
+    }
+
+    public function test_student_creation_rejects_client_supplied_owner_status_and_role_fields(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+
+        foreach ([
+            'user_id' => 999,
+            'status' => 'approved',
+            'is_admin' => true,
+            'role' => 'admin',
+        ] as $field => $value) {
+            $this->actingAs($student)
+                ->postJson('/requests', [
+                    'item_name' => 'Laptop',
+                    'quantity' => 1,
+                    'purpose' => 'Coursework',
+                    $field => $value,
+                ])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+
+        $this->assertDatabaseCount('requests', 0);
     }
 
     public function test_administrator_cannot_create_a_request(): void
@@ -85,13 +150,49 @@ class ServiceRequestAuthorizationTest extends TestCase
         $serviceRequest = ServiceRequest::query()->create($this->requestData($student));
 
         $this->actingAs($admin)
-            ->patchJson("/requests/{$serviceRequest->id}/status", ['status' => 'approved'])
+            ->patchJson("/requests/{$serviceRequest->id}/status", [
+                'status' => 'approved',
+                'user_id' => 999,
+                'requester_name' => 'Changed Name',
+                'requester_email' => 'changed@example.com',
+                'purpose' => 'Changed purpose',
+            ])
             ->assertOk()
             ->assertJsonPath('status', 'approved');
 
         $this->assertDatabaseHas('requests', [
             'id' => $serviceRequest->id,
+            'user_id' => $student->id,
+            'requester_name' => 'Student',
+            'requester_email' => 'student@example.com',
+            'purpose' => 'Coursework',
             'status' => 'approved',
+        ]);
+    }
+
+    public function test_administrator_status_update_accepts_only_pending_approved_or_rejected(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+        $serviceRequest = ServiceRequest::query()->create($this->requestData($student));
+
+        foreach (['pending', 'approved', 'rejected'] as $status) {
+            $this->actingAs($admin)
+                ->patchJson("/requests/{$serviceRequest->id}/status", ['status' => $status])
+                ->assertOk()
+                ->assertJsonPath('status', $status);
+        }
+
+        foreach (['processing', 'deleted', ''] as $status) {
+            $this->actingAs($admin)
+                ->patchJson("/requests/{$serviceRequest->id}/status", ['status' => $status])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('status');
+        }
+
+        $this->assertDatabaseHas('requests', [
+            'id' => $serviceRequest->id,
+            'status' => 'rejected',
         ]);
     }
 
@@ -102,7 +203,11 @@ class ServiceRequestAuthorizationTest extends TestCase
         $ownRequest = ServiceRequest::query()->create($this->requestData($student));
         $otherRequest = ServiceRequest::query()->create($this->requestData($otherStudent));
 
+        $csrfToken = str_repeat('a', 40);
+
         $this->actingAs($student)
+            ->withSession(['_token' => $csrfToken])
+            ->withHeader('X-CSRF-TOKEN', $csrfToken)
             ->patchJson("/requests/{$ownRequest->id}/status", ['status' => 'approved'])
             ->assertForbidden();
 

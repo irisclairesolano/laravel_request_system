@@ -27,15 +27,24 @@ class ServiceRequestController extends Controller
     {
         Gate::authorize('create', ServiceRequest::class);
 
+        $user = $request->user();
         $validated = $request->validate([
-            'requester_name' => ['required', 'string', 'max:100'],
-            'requester_email' => ['required', 'email', 'max:255'],
+            'user_id' => ['missing'],
+            'status' => ['missing'],
+            'is_admin' => ['missing'],
+            'role' => ['missing'],
             'item_name' => ['required', 'string', 'max:150'],
             'quantity' => ['required', 'integer', 'min:1'],
-            'purpose' => ['required', 'string'],
+            'purpose' => ['required', 'string', 'max:2000'],
         ]);
 
-        $serviceRequest = $request->user()->requests()->create($validated)->refresh();
+        $serviceRequest = ServiceRequest::query()->create([
+            ...$validated,
+            'user_id' => $user->id,
+            'requester_name' => $user->name,
+            'requester_email' => $user->email,
+            'status' => 'pending',
+        ])->refresh();
 
         return response()->json($serviceRequest, 201);
     }
@@ -53,7 +62,7 @@ class ServiceRequestController extends Controller
         Gate::authorize('updateStatus', $serviceRequest);
 
         $validated = $request->validate([
-            'status' => ['required', 'string', 'max:20'],
+            'status' => ['required', 'string', 'in:pending,approved,rejected'],
         ]);
 
         $serviceRequest->update(['status' => $validated['status']]);
