@@ -13,7 +13,7 @@ class ServiceRequestPolicy
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -21,7 +21,7 @@ class ServiceRequestPolicy
      */
     public function view(User $user, ServiceRequest $serviceRequest): bool
     {
-        return false;
+        return $user->isAdmin() || $serviceRequest->user_id === $user->id;
     }
 
     /**
@@ -29,7 +29,15 @@ class ServiceRequestPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        return $user->role === 'student';
+    }
+
+    /**
+     * Determine whether the user can update the request status.
+     */
+    public function updateStatus(User $user, ServiceRequest $serviceRequest): bool
+    {
+        return $user->isAdmin();
     }
 
     /**
