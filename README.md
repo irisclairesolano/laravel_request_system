@@ -250,5 +250,5 @@ http://127.0.0.1:8000
 
 ##laboratory 3 verification 
 
-Verification instruction: Test administrator access and administrator-only status updates. 
+Verification instruction: Test student ownership and deny access to another student's request.
 
