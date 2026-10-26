@@ -1,0 +1,15 @@
+s.env
+.env.*
+!.env.container.example
+.git
+vendor
+node_modules
+bootstrap/cache/*.php
+*.sql
+*.zip
+*.tar
+*.gz
+*.log
+storage/logs/*
+*.pem
+*.key

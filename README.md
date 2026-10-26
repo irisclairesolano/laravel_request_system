@@ -252,3 +252,194 @@ http://127.0.0.1:8000
 
 
 Verification instruction: Test administrator access and administrator-only status updates.
+
+## Laboratory 4: Docker Containers
+
+### Docker requirements
+
+The container setup was verified with Docker 28.0.4 and Docker Compose v2.34.0
+on Windows using Docker Desktop's Linux container engine. Use Docker Desktop
+with Linux containers enabled, or another Docker Engine that supports Linux
+containers, and the Docker Compose v2 plugin.
+
+Check the installed versions from PowerShell:
+
+```powershell
+docker --version
+docker compose version
+```
+
+### Container diagram and services
+
+```mermaid
+flowchart LR
+    Browser["Browser: http://localhost:8080"] -->|HTTP| Web["web: Nginx"]
+    Web -->|FastCGI| App["app: Laravel / PHP-FPM"]
+    App -->|MySQL| DB["db: MySQL 8.4"]
+    DB --> Volume[("db_data named volume")]
+```
+
+| Service | Purpose |
+| --- | --- |
+| `web` | Nginx serves the public files and forwards PHP requests to the app. It publishes port `8080` on localhost only. |
+| `app` | Laravel running on PHP-FPM. The image installs production Composer dependencies and builds the frontend assets. |
+| `db` | MySQL 8.4 database. Its health check must pass before the app starts. |
+| `db_data` | Named Docker volume holding MySQL data outside the database container, so recreating containers does not remove records. |
+
+### Environment configuration
+
+Create a private local environment file from the checked-in example:
+
+```powershell
+Copy-Item .env.container.example .env.container
+notepad .env.container
+```
+
+Replace the password placeholders with two different, unique local passwords.
+Leave no placeholder in use for a real deployment. `.env.container` is ignored
+by Git; commit only `.env.container.example`.
+
+| Variable | Meaning |
+| --- | --- |
+| `APP_KEY` | Laravel encryption key. Generate it using the command below and paste the output into this file. |
+| `DB_HOST` | Compose service name `db`, used by Laravel to find MySQL on the internal network. |
+| `DB_DATABASE` | Database name used by Laravel; it must match the database Compose initializes. |
+| `DB_USERNAME` | Application database user, not the MySQL root account. |
+| `DB_PASSWORD` | Unique local password for the application database user. |
+| `DB_ROOT_PASSWORD` | A different unique local password for MySQL administration and the database health check. |
+
+The `.env.container.example` file contains placeholder values only. It does not
+contain real passwords or a usable application key.
+
+Validate the Compose configuration, build the image, and generate an
+application key:
+
+```powershell
+docker compose --env-file .env.container config --quiet
+docker compose --env-file .env.container build app
+docker compose --env-file .env.container run --rm --no-deps app php artisan key:generate --show
+```
+
+Copy the generated key into `APP_KEY` in `.env.container` before starting the
+application.
+
+### Build and startup commands
+
+From the repository folder, build and start all services:
+
+```powershell
+docker compose --env-file .env.container up -d --build
+docker compose --env-file .env.container ps
+```
+
+Open <http://localhost:8080>. Since the configuration is in
+`.env.container` rather than the default `.env`, include
+`--env-file .env.container` on every Compose command.
+
+### Migration and account setup commands
+
+Apply database migrations and create the fictional development accounts:
+
+```powershell
+docker compose --env-file .env.container exec app php artisan migrate --force
+docker compose --env-file .env.container exec app php artisan db:seed --class=UserSeeder --force
+```
+
+The local seeder creates Student 1 (`student1@example.com`), Student 2
+(`student2@example.com`), and Administrator (`admin@example.com`). These
+accounts are for local development only; do not use them in a deployed
+environment. `UserSeeder` uses `updateOrCreate`, so running it again resets
+these sample accounts to their seeded values.
+
+To check the migration state:
+
+```powershell
+docker compose --env-file .env.container exec app php artisan migrate:status
+```
+
+### Health-check instructions
+
+Check that the database reports `healthy` and the app and web services report
+`Up`:
+
+```powershell
+docker compose --env-file .env.container ps
+```
+
+The `db` health check runs `mysqladmin ping`. Verify the HTTP endpoint too:
+
+```powershell
+curl.exe -fsS --max-time 120 http://localhost:8080/ -o NUL
+```
+
+If a service is unhealthy or the HTTP check fails, inspect its logs:
+
+```powershell
+docker compose --env-file .env.container logs --tail=100 db app web
+```
+
+### Persistence test results
+
+The persistence test record `CONTAINER-PERSIST-01` was created by Student 1
+and remained in the MySQL database after `docker compose down` followed by
+`docker compose up -d`. The observed record was:
+
+| Request ID | Student owner | Item name | Quantity | Status |
+| --- | --- | --- | --- | --- |
+| 4 | Student 1 (`student1@example.com`) | `CONTAINER-PERSIST-01` | 1 | `pending` |
+
+The app container ID changed from prefix `8d0d295e596b` to
+`9a53c6788cbc` during this test, while the request remained. The MySQL data
+is stored in the `db_data` named volume. `docker compose down` preserves this
+volume. Do not use `docker compose down -v` if you need to keep the database.
+
+### Reproduction procedure
+
+1. Clone the repository, change into its folder, and copy the example
+   environment file as described above.
+2. Set unique local database and root passwords, validate the Compose file,
+   build the app image, generate an application key, and paste that key into
+   `.env.container`.
+3. Start the stack with
+   `docker compose --env-file .env.container up -d --build`.
+4. Run the migration and `UserSeeder` commands above. Check `docker compose
+   --env-file .env.container ps` and open <http://localhost:8080>.
+5. Sign in as a student, open the **Service Requests** navigation link, and
+   create a request with item name `CONTAINER-PERSIST-01`, quantity `1`, and a
+   short purpose. Record its ID, owner, item name, quantity, and status.
+6. Record the app container ID:
+
+   ```powershell
+   $appId = docker compose --env-file .env.container ps -q app
+   "Full app container ID: $appId"
+   "First 12 characters: $($appId.Substring(0, 12))"
+   ```
+
+7. Recreate the containers without removing the database volume, then verify
+   the request is still present:
+
+   ```powershell
+   docker compose --env-file .env.container down
+   docker compose --env-file .env.container up -d
+   docker compose --env-file .env.container ps
+   docker compose --env-file .env.container exec app php artisan tinker --execute='dump(App\Models\ServiceRequest::all()->map(fn ($r) => [$r->id, $r->user_id, $r->item_name, $r->quantity, $r->status])->all());'
+   ```
+
+8. Find `CONTAINER-PERSIST-01` in the Tinker output and confirm its row
+   matches the details recorded in step 5. The app container ID may have
+   changed, while the row remains because the named database volume was
+   preserved.
+
+### Why credentials must not be stored in Docker images
+
+Anyone who obtains an image can inspect its layers and build history. Images
+are also copied to registries and other computers, making embedded credentials
+easy to expose and difficult to revoke everywhere. Supply credentials at
+runtime through a private environment file or a secrets manager; never copy
+`.env` files, passwords, or private keys into an image or commit them to Git.
+
+### S28 - README evidence
+
+Capture screenshots of the rendered Laboratory 4 README section, preferably
+from the GitHub repository page, and save them under `docs/screenshots/` as
+the S28 evidence.
