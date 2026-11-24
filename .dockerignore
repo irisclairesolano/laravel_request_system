@@ -1,3 +1,5 @@
+
+.env
 s.env
 .env.*
 !.env.container.example
