@@ -1,0 +1,18 @@
+# Nonsecret Configuration Baseline (Repository-Derived Local Baseline)
+# Note: Instructor-approved staging baseline was NOT AVAILABLE.
+# Values below are derived from compose.yaml, Dockerfile, docker/nginx/default.conf, and .env.container.example.
+# Never place real APP_KEY, database passwords, tokens, or .env contents in this file.
+
+ENVIRONMENT_LABEL=local-docker
+APP_ENV=local
+APP_DEBUG=false
+APP_KEY_REQUIRED=true
+DOCUMENT_ROOT=/var/www/html/public
+WRITABLE_PATHS=storage,bootstrap/cache
+SERVICE_IDENTITY=laravel
+DB_HOST=db
+DB_PORT=3306
+EXPOSED_WEB_BIND=127.0.0.1:8080
+PUBLIC_TLS=UNVERIFIED
+HOSTING_FIREWALL=UNVERIFIED
+HOSTED_PATCH_RESPONSIBILITY=UNVERIFIED
