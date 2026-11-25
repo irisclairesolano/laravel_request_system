@@ -443,3 +443,73 @@ runtime through a private environment file or a secrets manager; never copy
 Capture screenshots of the rendered Laboratory 4 README section, preferably
 from the GitHub repository page, and save them under `docs/screenshots/` as
 the S28 evidence.
+
+## Laboratory 8 & 9: Local Release, Rollback, and Configuration Audit
+
+> **Scope Note:** Instructor-managed staging, GitHub Actions deployment
+> workflows, platform approval gates, and instructor-supplied audit skeletons
+> were **NOT AVAILABLE**. The procedures below document the local Docker Compose
+> (`iris89`) workflow and a temporary Cloudflare Quick Tunnel used for partner
+> verification.
+
+### Release and Peer-Review Process (Lab 8)
+
+1. Verify a clean Git commit (`git rev-parse HEAD`), ensure `.env` is excluded in
+   `.dockerignore`, and create a disposable worktree for fault/rollback practice.
+2. Create a local-only `.env.container` from `.env.container.example` with
+   unique local database passwords, `APP_DEBUG=false`, and a generated
+   `APP_KEY` retained across releases. (Never commit `.env.container` or
+   include secrets in evidence.)
+3. Run local tests (`composer test`) and build frontend assets (`npm ci && npm run build`)
+   before building the Docker image (`docker compose -p iris89 --env-file .env.container build app`).
+4. Record the commit SHA, local Docker image ID, and manual peer review
+   (reviewer name, decision, timestamp) before starting the local release.
+5. Start the stack (`docker compose -p iris89 --env-file .env.container up -d --no-build`),
+   run `php artisan migrate --force` and `UserSeeder` on the disposable local DB,
+   and confirm `php artisan migrate:status`.
+
+### Verification and Recovery Steps (Lab 8)
+
+- **Smoke tests:** Verify availability on `http://localhost:8080` (and via
+  temporary Cloudflare Quick Tunnel for partner testing), student login
+  (`student1@example.com`), fictional request creation (`STAGE-LIB-08`), admin
+  status update (`admin@example.com`), student ownership isolation
+  (`student2@example.com` -> `404`), and student restriction (`PATCH /status` -> `403`).
+- **Fault simulation & rollback:** Tag the known-good image as
+  `lab89-iris-good:local`, test a self-made local fault in the disposable
+  worktree, record the failing smoke test and rollback decision, then restore the
+  known-good template and redeploy `lab89-iris-good:local`.
+- **Database persistence:** Application container replacement preserves MySQL
+  data in the named volume (`iris89_db_data`). Never run `docker compose down -v`
+  when preserving records. Database-level recovery (if schema/data were
+  corrupted) would require separate backup restoration steps outside image
+  redeployment.
+- **Recorded outcome:**
+  - **Starting commit SHA:** `30c58124b696ced4ae8f9e771f39a4a57f551c82` (`Laravel Framework 12.69.2`)
+  - **Local test suite:** `composer test` — `46 passed (189 assertions)` in `8.01s` (local tests, not a CI run)
+  - **Known-good local image:** `lab89-iris-good:local` (`sha256:8278c7b2eb8fad034efcd0e5d54d16f07e0e1cc21b7132c3ff6be1172198b23d`)
+  - **Smoke test & persistence record:** `STAGE-LIB-08` created at `/requests/1` and updated to `approved`
+  - **Fault & rollback result:** Local `/requests-fault` simulation returned `404 NOT FOUND` (`7:27 PM`); rolled back to `lab89-iris-good:local` and verified `/requests/1` (`STAGE-LIB-08`, `approved`) persisted in `iris89_db_data`
+
+### Configuration Audit and Drift Remediation (Lab 9)
+
+- **Nonsecret baseline:** [`config-audit/baseline.example`](config-audit/baseline.example)
+  documents the repository-derived local baseline (`APP_DEBUG=false`,
+  `DOCUMENT_ROOT=/var/www/html/public`, `WRITABLE_PATHS=storage,bootstrap/cache`,
+  `SERVICE_IDENTITY=laravel`, `EXPOSED_WEB_BIND=127.0.0.1:8080`). Hosted TLS,
+  hosting firewall, database access scope, and hosted patch responsibility are
+  marked `UNVERIFIED`.
+- **Audit script:** Run from the repository root while the `iris89` stack is up:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File config-audit/audit.ps1
+  echo "Exit code: $LASTEXITCODE"
+  ```
+
+  The script prints `<check_name> PASS|FAIL|UNVERIFIED` without exposing raw
+  environment variables, keys, or cached configuration, and exits with code `1`
+  if any required check fails.
+- **Idempotence & drift test:** Verify repeated `chmod 750` on a temporary
+  container directory produces identical `stat` output, then test controlled
+  `APP_DEBUG=true` drift (confirming `debug_off FAIL` and exit code `1`) and
+  remediate back to `APP_DEBUG=false` (confirming `debug_off PASS` and exit code `0`).
